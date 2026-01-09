@@ -1,7 +1,10 @@
 service: serverless-backup-analysis
+
+configValidationMode: warn
+
 provider:
   name: aws
-  runtime: python3.11
+  runtime: python3.13
   region: eu-west-1
   iamRoleStatements:
     - Effect: "Allow"
@@ -10,6 +13,17 @@ provider:
       Resource:
         - "arn:aws:s3:::dovetail-backup-archive"
         - "arn:aws:s3:::dovetail-backup-archive/*"
+  apiGateway:
+    apiKeys:
+      - name: ${opt:stage}-serverless-backup-analysis-key
+    usagePlan:
+          name: ${opt:stage}-serverless-backup-analysis-usage-plan
+          quota:
+            limit: 100000
+            period: MONTH
+          throttle:
+            burstLimit: 200
+            rateLimit: 100
 
 plugins:
   - serverless-python-requirements
@@ -35,3 +49,4 @@ functions:
           path: /
           method: post
           cors: true
+          private: true
