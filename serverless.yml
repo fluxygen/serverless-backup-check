@@ -1,7 +1,5 @@
 service: serverless-backup-analysis
 
-configValidationMode: warn
-
 provider:
   name: aws
   runtime: python3.13
@@ -17,20 +15,16 @@ provider:
     apiKeys:
       - name: ${opt:stage}-serverless-backup-analysis-key
     usagePlan:
-          name: ${opt:stage}-serverless-backup-analysis-usage-plan
-          quota:
-            limit: 100000
-            period: MONTH
-          throttle:
-            burstLimit: 200
-            rateLimit: 100
-
-plugins:
-  - serverless-python-requirements
+      quota:
+        limit: 100000
+        period: MONTH
+      throttle:
+        burstLimit: 200
+        rateLimit: 100
 
 custom:
   pythonRequirements:
-    dockerizePip: non-linux
+    dockerizePip: false
 
 package:
   include:

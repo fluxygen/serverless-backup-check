@@ -1,11 +1,14 @@
-
 # Serverless backup summary
 
-This repo contains code for posting a mail summary each week about backups, made in a specific S3 bucket.
-It uses the serverless framework + Lambda in order to do this.
+This repo contains a Serverless application that exposes a secure HTTP API to analyze backups stored in S3.
+It uses the Serverless Framework + AWS Lambdato perform on-demand checks.
 
-This assumes that all backups are located in same bucket (or script can be run multiple times with different config).
-Layout of files looks as follows:
+## Primary Use Case
+
+This API is designed to be queried by **Grafana** (or other monitoring tools) to visualize backup health. It accepts a JSON payload pointing to a specific S3 bucket and folder, checks if the backup exists, and validates if it has grown within expected tolerances.
+
+## Backup Structure
+This tool assumes backups are organized by date in an S3 bucket:
 
 - S3 bucket
     - path/to/backup/folder
@@ -23,13 +26,40 @@ and if they are within tolerance (X% difference per day).
 Backup size change limitations are based on the calculations in
 https://drive.google.com/open?id=1tiQXgoRs9gfTeVeEpIu1l0TDDkTfh4dDDm1Eud0zhxQ
 
-# Deploying
+# Setup & Requirements
 
-make sure you have access to the AWS acount: `dovetail-backups`
+- **Python 3.13+**
+- **Node.js & NPM**
+- **Serverless Framework V4** (Local dependency)
+
+To install dependencies and setup the environment:
 
 ```bash
-aws-vault exec dovetail-backups --
-sls deploy
+# Create and activate virtual environment
+python3.13 -m venv .venv313
+source .venv313/bin/activate
+
+# Install Python requirements
+pip install -r requirements.txt
+
+# Install Node requirements (Serverless V4 + Plugins)
+npm install
+
+```
+
+# Deploying
+
+Make sure you have access to the AWS account: `dovetail-backups`.
+
+**Important:** You must use `npx` to ensure the local Serverless V4 version is used. Global installations (v3) will fail with Python 3.13.
+
+```bash
+# Authenticate once (required for V4)
+npx serverless login
+
+# Deploy to Production
+aws-vault exec dovetail-backups -- npx serverless deploy --stage prod
+
 ```
 
 # Adding more buckets to check
@@ -43,16 +73,19 @@ The access for the execution role of the lambda function on the `dovetail-backup
         - "... other buckets ..."
         - "arn:aws:s3:::<BUCKET_NAME>"
         - "arn:aws:s3:::<BUCKET_NAME>/*"
+
 ```
 
-This policy needs to be added to the account that hosts the s3 bucket:
+This policy needs to be added to the account that hosts the s3 bucket.
+
+**Note:** Update the role ARN to match the `prod` stage if deploying to production.
 
 ```json
 {
     "Sid": "AllowBackupCheck",
     "Effect": "Allow",
     "Principal": {
-        "AWS": "arn:aws:iam::190384451510:role/serverless-backup-analysis-dev-eu-west-1-lambdaRole"
+        "AWS": "arn:aws:iam::190384451510:role/serverless-backup-analysis-prod-eu-west-1-lambdaRole"
     },
     "Action": "s3:ListBucket",
     "Resource": [
@@ -60,14 +93,15 @@ This policy needs to be added to the account that hosts the s3 bucket:
         "arn:aws:s3:::<BUCKET_NAME>/*"
     ]
 }
+
 ```
 
 # Trying the check locally
 
-Requirements:
+**Requirements:**
 
-- `pip install fire` (But the script will notify you if you forgot)
-- `aws-vault exec kabisa-backups` (But the script will notify you if you forgot)
+* `pip install fire` (or install via `requirements.txt`)
+* `aws-vault exec dovetail-backups` (But the script will notify you if you forgot)
 
 The file `run_local.py` is a [Fire](https://github.com/google/python-fire) script for running this check locally
 Fire helps with nice cli apps. For example if you run `./run_local.py -h` you get this output:
